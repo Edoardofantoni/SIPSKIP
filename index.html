@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2b2c2e">
+<title>SipSkip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600;1,700;1,800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#2b2c2e; --panel:#262729; --head:#8f9194; --head-ink:#4d4e51;
+    --teal:#6fdcc0; --pink:#e0408f; --ink:#3d3e41; --muted:#8a8b8f; --white:#fff;
+    --radius:20px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--white);font-family:Montserrat,system-ui,sans-serif}
+  button{font-family:inherit;cursor:pointer}
+  .bgpattern{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55}
+  .app{position:relative;z-index:1;max-width:480px;margin:0 auto;min-height:100vh;padding:18px 14px 120px}
+
+  /* top bar */
+  .top{display:flex;align-items:center;justify-content:space-between;margin:4px 4px 18px}
+  .logo{font-weight:800;font-style:italic;font-size:22px;letter-spacing:-.5px}
+  .logo b{color:var(--teal)}
+  .pillbtn{border:1.5px solid var(--teal);background:transparent;color:var(--teal);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:600}
+
+  h1{font-weight:800;font-style:italic;font-size:27px;text-align:center;margin:20px 0 22px;letter-spacing:-.3px}
+
+  /* cards like the design */
+  .card{background:var(--panel);border-radius:var(--radius);overflow:hidden;margin-bottom:22px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .card-h{background:var(--head);color:var(--head-ink);font-weight:700;font-style:italic;font-size:21px;padding:12px 22px}
+  .card-b{padding:20px 18px 24px}
+  .lead{text-align:center;font-size:clamp(17px,5vw,21px);font-weight:400;margin:2px 0 22px}
+
+  .numbar{display:flex;justify-content:space-between;align-items:center;background:var(--head);border-radius:16px;padding:14px 20px;margin-bottom:22px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .numbar .n{color:var(--head-ink);font-weight:700;font-size:18px}
+  .numbar .when{color:#5f6064;font-size:17px;font-weight:500;text-transform:uppercase}
+
+  /* name editor */
+  .namewrap{display:flex;align-items:center;gap:10px;border-bottom:2px solid #47484c;padding:4px 2px 8px}
+  .namewrap:focus-within{border-color:var(--teal)}
+  .namewrap input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#fff;font:600 22px Montserrat,sans-serif;padding:6px 0}
+  .namewrap input::placeholder{color:#6b6c70;font-weight:500}
+  .namewrap .pen{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--teal);background:transparent;display:grid;place-items:center;flex:none}
+  .err{color:var(--pink);font-size:13px;font-weight:600;margin-top:8px;display:none}
+  .err.show{display:block}
+
+  /* ticket — proportions taken from the reference screenshots */
+  .ticket{position:relative;display:flex;background:#fff;border-radius:5cqw;overflow:hidden;aspect-ratio:790/408;margin:0 6px 18px;box-shadow:0 6px 18px rgba(0,0,0,.25);transition:transform .15s;container-type:inline-size}
+  .ticket-wrap{container-type:inline-size;margin:0 2px 18px}
+  .ticket-wrap .ticket{margin:0;border-radius:3cqw}
+  .ticket:active{transform:scale(.985)}
+  .ticket::before,.ticket::after{content:"";position:absolute;top:50%;width:12.2cqw;aspect-ratio:1;transform:translateY(-50%);background:var(--panel);border-radius:50%;z-index:2}
+  .ticket::before{left:-6.1cqw}
+  .ticket::after{right:-6.1cqw}
+  .ticket .stripe{width:9.1cqw;flex:none;background:#7d7a3f;animation:stripecolor 48s ease-in-out infinite}
+  @keyframes stripecolor{
+    0%,100%{background:#7d7a3f}
+    16%{background:#a39a48}
+    32%{background:#c8b94f}
+    48%{background:#a8a26e}
+    64%{background:#7f8c72}
+    80%{background:#8a7f68}
+  }
+  @media (prefers-reduced-motion:reduce){.ticket .stripe{animation:none}}
+  .tk-body{flex:1;padding:3.2cqw 9.2cqw 3.2cqw 3.3cqw;display:flex}
+  .tk-inner{position:relative;flex:1;border:max(1.5px,.33cqw) solid var(--teal);border-radius:2.8cqw;overflow:hidden;transition:border-color .4s}
+  .face{position:absolute;inset:0;transition:opacity .35s,transform .35s}
+  .face.front{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3cqw}
+  .face.back{opacity:0;transform:translateY(8px)}
+  .go{position:absolute;left:0;right:0;top:14%;text-align:center}
+  .go span{color:var(--pink);font-weight:700;font-size:6.6cqw;white-space:nowrap;border-bottom:.55cqw solid var(--pink);padding-bottom:.3cqw}
+  .face.back .qty{position:absolute;left:0;right:0;bottom:14%}
+  .qty{color:var(--ink);font-weight:700;font-size:6.7cqw;letter-spacing:-.2px;text-align:center;padding:0 8px;line-height:1.1;font-size:7.4cqw}
+  .qty.sm{font-size:5.6cqw}
+  .tk-logo{max-width:13cqw;max-height:10cqw;object-fit:contain;display:block}
+  .cross{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none}
+  .cross line{stroke:var(--pink);stroke-width:max(3px,.6cqw);stroke-linecap:round;stroke-dasharray:400;stroke-dashoffset:400}
+
+  .s-counter .front{opacity:0;transform:translateY(-8px)}
+  .s-counter .back{opacity:1;transform:none}
+  .ticket.s-redeemed .stripe{background:#e2d67a;animation:none}
+  .s-redeemed .tk-inner{border-color:var(--pink);border-width:max(1.5px,.25cqw)}
+  .s-redeemed .cross{opacity:1}
+  .s-redeemed .cross line{animation:draw .45s ease-out forwards}
+  .s-redeemed .cross line:nth-child(2){animation-delay:.25s}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .hint{text-align:center;color:var(--muted);font-size:13px;margin:-4px 0 18px}
+
+  .outline{display:block;margin:10px auto 0;border:2px solid var(--teal);background:transparent;color:var(--teal);border-radius:18px;padding:12px 0;width:66%;font-size:21px;font-weight:500}
+
+  .qrbox{background:#fff;border-radius:20px;width:220px;margin:6px auto 0;padding:18px;display:grid;place-items:center;transition:opacity .4s}
+  .qrbox img,.qrbox canvas{display:block;width:184px!important;height:184px!important}
+  .qrbox.done{opacity:.35}
+  .qrtext{text-align:center;font-size:19px;line-height:1.45;margin:0 6px 18px}
+  .code{text-align:center;color:var(--muted);font-size:12px;margin-top:10px;letter-spacing:1px}
+  .staff{display:block;margin:18px auto 0;background:transparent;border:1.5px dashed #5a5b60;color:#a9aaae;border-radius:12px;padding:10px 14px;font-size:13px;font-weight:600}
+  .redeemed-msg{text-align:center;color:var(--pink);font-weight:700;margin-top:14px;font-size:15px}
+
+  /* menu product rows */
+  .prod{position:relative;display:flex;background:#fff;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  .prod::before,.prod::after{content:"";position:absolute;top:50%;width:30px;height:56px;margin-top:-28px;background:var(--panel);border-radius:50%;z-index:2}
+  .prod::before{left:-15px}.prod::after{right:-15px}
+  .prod .stripe{width:38px}
+  .prod-b{flex:1;padding:14px 22px 14px 18px;display:flex;align-items:center;gap:10px;color:var(--ink)}
+  .prod-t{flex:1;min-width:0}
+  .prod-n{font-weight:700;font-size:19px}
+  .prod-d{font-size:12.5px;color:#76777b;margin-top:3px}
+  .prod-p{font-weight:700;font-size:15px;margin-top:6px}
+  .step{display:flex;align-items:center;gap:8px;flex:none}
+  .step button{width:34px;height:34px;border-radius:50%;border:2px solid #3fbf9f;background:#fff;color:#2e9c81;font-size:20px;font-weight:700;line-height:1;display:grid;place-items:center;padding:0}
+  .step button.minus{border-color:#c9cacd;color:#9a9b9f}
+  .step span{min-width:18px;text-align:center;font-weight:700;font-size:18px}
+  .prod.has .prod-b{background:linear-gradient(90deg,#fff 70%,#effbf7)}
+
+  /* bottom bar */
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:12px 14px 18px;background:linear-gradient(transparent,rgba(30,31,33,.96) 30%)}
+  .bar-in{max-width:452px;margin:0 auto}
+  .cta{width:100%;border:0;border-radius:18px;background:var(--teal);color:#1f2a27;font-size:18px;font-weight:700;padding:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .cta:disabled{background:#4a4b4f;color:#8a8b8f;box-shadow:none}
+
+  /* sheet */
+  .ov{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;animation:fade .2s}
+  .sheet{width:100%;max-width:480px;background:var(--panel);border-radius:24px 24px 0 0;overflow:hidden;animation:up .25s ease-out;max-height:88vh;display:flex;flex-direction:column}
+  .sheet .card-b{overflow:auto}
+  @keyframes up{from{transform:translateY(40px);opacity:.4}}
+  @keyframes fade{from{opacity:0}}
+  .line{display:flex;justify-content:space-between;font-size:16px;padding:10px 0;border-bottom:1px solid #393a3e}
+  .line.tot{font-weight:800;font-size:19px;border:0;padding-top:14px}
+  .note{font-size:12px;color:var(--muted);text-align:center;margin:14px 0 4px}
+  .lbl{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 4px;text-transform:uppercase;letter-spacing:.8px}
+  .ordrow{display:flex;justify-content:space-between;align-items:center;width:100%;background:#303134;border:0;color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;text-align:left}
+  .ordrow small{display:block;color:var(--muted);margin-top:3px;font-size:12px}
+  .tag{font-size:11px;font-weight:700;border-radius:999px;padding:4px 9px;letter-spacing:.4px}
+  .tag.new{background:#7d7a3f;color:#fff}.tag.counter{background:#c8b94f;color:#2b2c2e}.tag.redeemed{background:transparent;border:1.5px solid var(--pink);color:var(--pink)}
+  .toast{position:fixed;left:50%;top:24px;transform:translateX(-50%);background:#fff;color:#2b2c2e;font-weight:600;font-size:14px;padding:10px 16px;border-radius:12px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:fade .2s}
+  .ov.center{align-items:center;padding:20px}
+  .confirm{width:100%;max-width:380px;background:var(--panel);border-radius:22px;overflow:hidden;animation:pop .22s ease-out;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  @keyframes pop{from{transform:scale(.92);opacity:0}}
+  .confirm .card-b{text-align:center;padding:22px 20px 24px}
+  .confirm .q{font-size:19px;line-height:1.4;margin:4px 0 6px}
+  .confirm .q b{color:var(--teal)}
+  .confirm .sub{font-size:13px;color:var(--muted);margin:0 0 22px}
+  .yn{display:flex;gap:12px}
+  .yn button{flex:1;border-radius:18px;padding:15px 0;font-size:20px;font-weight:800;letter-spacing:1px}
+  .yn .no{background:transparent;border:2px solid var(--pink);color:var(--pink)}
+  .yn .yes{background:var(--teal);border:2px solid var(--teal);color:#1f2a27}
+  .foot{text-align:center;color:#6b6c70;font-size:11px;margin-top:10px}
+</style>
+</head>
+<body>
+
+<svg class="bgpattern" width="100%" height="100%" aria-hidden="true">
+  <defs>
+    <pattern id="doodles" width="180" height="180" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#4b5a57" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- martini -->
+        <path d="M14 18h34L31 38v18M22 56h18M24 24l6 0"/>
+        <!-- beer -->
+        <path d="M96 14h26v40h-26zM122 22h8v22h-8M100 22v26M108 22v26M114 22v26"/>
+        <!-- clock -->
+        <circle cx="150" cy="96" r="16"/><path d="M150 86v10l7 5"/>
+        <!-- bottle -->
+        <path d="M30 90h10v12l6 8v34H24v-34l6-8z"/>
+        <!-- star -->
+        <path d="M96 120l5 10 11 2-8 8 2 11-10-5-10 5 2-11-8-8 11-2z"/>
+        <!-- euro coin -->
+        <circle cx="160" cy="24" r="12"/><path d="M165 18a7 7 0 1 0 0 12M152 22h9M152 27h9"/>
+        <!-- glass -->
+        <path d="M66 150l4 24h16l4-24zM68 160h20"/>
+        <!-- lemon -->
+        <circle cx="68" cy="88" r="11"/><path d="M68 77v22M57 88h22M60 80l16 16M76 80l-16 16"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#doodles)"/>
+</svg>
+
+<div class="app" id="app"></div>
+<div id="layer"></div>
+
+<script>
+const PRODUCTS = [
+  {key:'analcolico', name:'Analcolico',    desc:'Mocktail, succhi e soft drink',        price:4,  color:'#4fb79c'},
+  {key:'drink',      name:'Drink',         desc:'I cocktail classici della casa',       price:8,  color:'#7d7a3f'},
+  {key:'premium',    name:'Premium Drink', desc:'Distillati premium e signature',       price:11, color:'#a8477a'},
+  {key:'birra',      name:'Birra',         desc:'Spina media 0,4 L',                    price:5,  color:'#c99a2e'},
+];
+const P = Object.fromEntries(PRODUCTS.map(p=>[p.key,p]));
+const KEY = 'desco';
+const eur = n => n.toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let S = {name:'', cart:{}, orders:[], nextNum:236};
+try{ const raw = localStorage.getItem(KEY); if(raw) S = Object.assign(S, JSON.parse(raw)); }catch(e){}
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} };
+
+let view = 'menu', currentId = null;
+const app = document.getElementById('app'), layer = document.getElementById('layer');
+
+function cartItems(){ return PRODUCTS.filter(p=>S.cart[p.key]>0).map(p=>({key:p.key,qty:S.cart[p.key]})); }
+function cartCount(){ return cartItems().reduce((a,i)=>a+i.qty,0); }
+function cartTotal(){ return cartItems().reduce((a,i)=>a+i.qty*P[i.key].price,0); }
+function ago(ts){
+  const m = Math.floor((Date.now()-ts)/60000);
+  if(m<1) return 'Adesso';
+  if(m<60) return m+' min fa';
+  const h = Math.floor(m/60); return h+(h===1?' ora fa':' ore fa');
+}
+function buzz(){ try{ navigator.vibrate && navigator.vibrate(15); }catch(e){} }
+function toast(msg){
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),1800);
+}
+
+/* ---------- MENU ---------- */
+function menuHTML(){
+  const n = S.orders.length;
+  return `
+  <div class="top">
+    <div class="logo">Sip<b>Skip</b><span class=""></span></div>
+    ${n?`<button class="pillbtn" data-act="orders">I tuoi ordini (${n})</button>`:''}
+  </div>
+  <h1>Cosa bevi stasera?</h1>
+
+  <div class="card">
+    <div class="card-h">Il tuo nome</div>
+    <div class="card-b">
+      <div class="namewrap">
+        <input id="name" type="text" maxlength="24" autocomplete="given-name" placeholder="Scrivi il tuo nome" value="${esc(S.name)}">
+        <button class="pen" data-act="focusname" aria-label="Modifica nome">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6fdcc0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        </button>
+      </div>
+      <div class="err" id="nameErr">Inserisci il tuo nome: ti chiameremo così al bancone.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">Scegli</div>
+    <div class="card-b">
+      ${PRODUCTS.map(p=>{
+        const q = S.cart[p.key]||0;
+        return `<div class="prod ${q?'has':''}" id="p-${p.key}">
+          <div class="stripe" style="background:${p.color}"></div>
+          <div class="prod-b">
+            <div class="prod-t">
+              <div class="prod-n">${p.name}</div>
+              <div class="prod-d">${p.desc}</div>
+              <div class="prod-p">${eur(p.price)}</div>
+            </div>
+            <div class="step">
+              <button class="minus" data-act="dec" data-k="${p.key}" aria-label="Togli ${p.name}" ${q?'':'style="visibility:hidden"'}>−</button>
+              <span ${q?'':'style="visibility:hidden"'}>${q}</span>
+              <button data-act="inc" data-k="${p.key}" aria-label="Aggiungi ${p.name}">+</button>
+            </div>
+          </div>
+        </div>`;}).join('')}
+    </div>
+  </div>
+  <div class="foot">SipSkip · progetto didattico · nessun pagamento reale</div>
+
+  <div class="bar"><div class="bar-in">
+    <button class="cta" data-act="checkout" ${cartCount()?'':'disabled'}>
+      <span>${cartCount()?`Ordina · ${cartCount()} ${cartCount()===1?'prodotto':'prodotti'}`:'Aggiungi qualcosa'}</span>
+      <span>${cartCount()?eur(cartTotal()):''}</span>
+    </button>
+  </div></div>`;
+}
+
+/* ---------- CHECKOUT SHEET ---------- */
+function openCheckout(){
+  const items = cartItems();
+  layer.innerHTML = `
+  <div class="ov" data-act="closeov">
+    <div class="sheet">
+      <div class="card-h">Conferma ordine</div>
+      <div class="card-b">
+        <p class="lbl">Nome sull'ordine</p>
+        <div class="namewrap" style="margin-bottom:18px">
+          <input id="name2" type="text" maxlength="24" placeholder="Scrivi il tuo nome" value="${esc(S.name)}">
+        </div>
+        <div class="err" id="nameErr2" style="margin:-10px 0 12px">Serve un nome per ritirare l'ordine.</div>
+        ${items.map(i=>`<div class="line"><span>${i.qty}x ${P[i.key].name}</span><span>${eur(i.qty*P[i.key].price)}</span></div>`).join('')}
+        <div class="line tot"><span>Totale</span><span>${eur(cartTotal())}</span></div>
+        <button class="cta" id="payBtn" data-act="pay" style="margin-top:14px;justify-content:center">Paga ${eur(cartTotal())}</button>
+        <div class="note">Pagamento simulato — nessun addebito.</div>
+        <button class="outline" data-act="closeov" style="font-size:17px;width:54%">Modifica</button>
+      </div>
+    </div>
+  </div>`;
+  const n2 = document.getElementById('name2');
+  n2.addEventListener('input', e=>{ S.name = e.target.value; save(); document.getElementById('nameErr2').classList.remove('show'); });
+}
+
+function pay(){
+  const name = (S.name||'').trim();
+  if(!name){ document.getElementById('nameErr2').classList.add('show'); document.getElementById('name2').focus(); return; }
+  const btn = document.getElementById('payBtn');
+  btn.disabled = true; btn.textContent = 'Pagamento in corso…';
+  setTimeout(()=>{
+    const id = Math.random().toString(36).slice(2,8).toUpperCase();
+    const order = {id, num:S.nextNum++, name, items:cartItems(), total:cartTotal(), created:Date.now(), status:'new'};
+    S.orders.unshift(order); S.cart = {}; save();
+    layer.innerHTML = ''; buzz();
+    openOrder(id);
+  }, 900);
+}
+
+/* ---------- ORDER / TICKET ---------- */
+function ticketHTML(o, it){
+  const label = `${it.qty}x ${P[it.key].name}`;
+  return `<div class="ticket-wrap"><div class="ticket s-${o.status}" data-act="flip" role="button" aria-label="${label}">
+    <div class="stripe"></div>
+    <div class="tk-body"><div class="tk-inner">
+      <div class="face front"><img class="tk-logo" src="logo.png" alt=""><div class="qty">${label}</div></div>
+      <div class="face back"><div class="go"><span>Vai al bancone</span></div><div class="qty sm">${label}</div></div>
+      <svg class="cross" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="8" y1="15" x2="92" y2="85" vector-effect="non-scaling-stroke"/><line x1="92" y1="15" x2="8" y2="85" vector-effect="non-scaling-stroke"/></svg>
+    </div></div>
+  </div></div>`;
+}
+function orderHTML(){
+  const o = S.orders.find(x=>x.id===currentId);
+  if(!o){ view='menu'; return menuHTML(); }
+  const red = o.status==='redeemed';
+  return `
+  <h1 style="margin-top:34px">Grazie per il tuo ordine!</h1>
+  <div class="numbar"><span class="n">#${o.num}</span><span class="when" data-ts="${o.created}">${ago(o.created)}</span></div>
+
+  <div class="card">
+    <div class="card-h">${esc(o.name)}</div>
+    <div class="card-b">
+      <p class="lead">Vai al bancone e ritira i prodotti</p>
+      ${o.items.map(it=>ticketHTML(o,it)).join('')}
+      <button class="outline" data-act="menu">Torna al menù</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">Riscuoti il tuo acquisto</div>
+    <div class="card-b">
+      <p class="qrtext">Mostra questo QR al personale per riscuotere il tuo ordine.</p>
+      <div class="qrbox ${red?'done':''}"><div id="qr"></div></div>
+      <div class="code">SIPSKIP · ${o.id}</div>
+      ${red
+        ? `<div class="redeemed-msg">Ordine riscosso ✓</div>`
+        : ''}
+    </div>
+  </div>`;
+}
+function openOrder(id){ currentId=id; view='order'; render(); window.scrollTo(0,0); }
+
+/* ---------- BARISTA CONFIRM ---------- */
+function openConfirm(o){
+  buzz();
+  const what = o.items.map(i=>`${i.qty}x ${P[i.key].name}`).join(', ');
+  layer.innerHTML = `
+  <div class="ov center" data-act="closeov">
+    <div class="confirm" role="dialog" aria-modal="true" aria-labelledby="cq">
+      <div class="card-h">Riservato al barista</div>
+      <div class="card-b">
+        <p class="q" id="cq">Consegnare <b>${what}</b> a ${esc(o.name)}?</p>
+        <p class="sub">Ordine #${o.num} · confermando, il ticket viene annullato</p>
+        <div class="yn">
+          <button class="no" data-act="confirmno">NO</button>
+          <button class="yes" data-act="redeem">SÌ</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- ORDERS LIST ---------- */
+function openOrders(){
+  const lbl = {new:'NUOVO',counter:'AL BANCONE',redeemed:'RISCOSSO'};
+  layer.innerHTML = `
+  <div class="ov" data-act="closeov">
+    <div class="sheet">
+      <div class="card-h">I tuoi ordini</div>
+      <div class="card-b">
+        ${S.orders.map(o=>`<button class="ordrow" data-act="open" data-id="${o.id}">
+          <span><b>#${o.num}</b> · ${esc(o.name)}<small>${o.items.map(i=>i.qty+'x '+P[i.key].name).join(', ')} · ${ago(o.created)}</small></span>
+          <span class="tag ${o.status}">${lbl[o.status]}</span>
+        </button>`).join('')}
+        <button class="staff" data-act="clear">Cancella ordini </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- RENDER ---------- */
+function render(){
+  app.innerHTML = view==='order' ? orderHTML() : menuHTML();
+  if(view==='menu'){
+    const n = document.getElementById('name');
+    n.addEventListener('input', e=>{ S.name = e.target.value; save(); document.getElementById('nameErr').classList.remove('show'); });
+  } else {
+    const o = S.orders.find(x=>x.id===currentId), box = document.getElementById('qr');
+    if(o && box){
+      if(window.QRCode){
+        new QRCode(box,{text:`SIPSKIP|#${o.num}|${o.id}`,width:184,height:184,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M});
+      } else {
+        box.innerHTML = `<div style="color:#2b2c2e;font-weight:800;font-size:22px;padding:60px 0">#${o.num}</div>`;
+      }
+    }
+  }
+}
+
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-act]'); if(!el) return;
+  const act = el.dataset.act;
+  if(act==='inc'||act==='dec'){
+    const k = el.dataset.k; S.cart[k] = Math.max(0,(S.cart[k]||0)+(act==='inc'?1:-1)); save(); buzz();
+    const y = window.scrollY; render(); window.scrollTo(0,y);
+  }
+  else if(act==='focusname'){ const n=document.getElementById('name'); n.focus(); n.select(); }
+  else if(act==='checkout'){
+    if(!(S.name||'').trim()){
+      document.getElementById('nameErr').classList.add('show');
+      const n=document.getElementById('name'); n.scrollIntoView({behavior:'smooth',block:'center'}); n.focus(); return;
+    }
+    openCheckout();
+  }
+  else if(act==='pay') pay();
+  else if(act==='closeov'){ if(e.target===el || el.tagName==='BUTTON'){ layer.innerHTML=''; if(view==='menu') render(); } }
+  else if(act==='flip'){
+    const o = S.orders.find(x=>x.id===currentId); if(!o || o.status==='redeemed') return;
+    if(o.status==='new'){
+      o.status='counter'; save(); buzz();
+      document.querySelectorAll('.ticket').forEach(t=>t.className='ticket s-counter');
+    } else {
+      openConfirm(o);
+    }
+  }
+  else if(act==='confirmno'){ layer.innerHTML=''; }
+  else if(act==='redeem'){ layer.innerHTML='';
+    const o = S.orders.find(x=>x.id===currentId); if(!o) return;
+    o.status='redeemed'; o.redeemedAt=Date.now(); save(); buzz();
+    const y = window.scrollY; render(); window.scrollTo(0,y);
+    toast('Ordine #'+o.num+' riscosso');
+  }
+  else if(act==='menu'){ view='menu'; currentId=null; render(); window.scrollTo(0,0); }
+  else if(act==='orders') openOrders();
+  else if(act==='open'){ layer.innerHTML=''; openOrder(el.dataset.id); }
+  else if(act==='clear'){ S.orders=[]; S.nextNum=236; save(); layer.innerHTML=''; render(); toast('Ordini cancellati'); }
+});
+
+setInterval(()=>{ document.querySelectorAll('[data-ts]').forEach(el=>el.textContent=ago(+el.dataset.ts)); }, 15000);
+// logo.png opzionale: se il file non c'è, l'immagine viene rimossa
+document.addEventListener('error', e=>{ if(e.target.classList && e.target.classList.contains('tk-logo')) e.target.remove(); }, true);
+render();
+</script>
+</body>
+</html>
